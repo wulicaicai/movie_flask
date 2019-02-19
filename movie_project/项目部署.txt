@@ -1,0 +1,87 @@
+安装centos python3.6.1 mysql nginx
+
+安装python3
+yum -y install openssl-devel bzip2-devel expat-devel gdbm-devel readline-devel sqlite-devel   # python3.6依赖包
+scp  python-3.6.1.tgz root@IP:/root/   # 拷贝
+tar -zxf python-3.6.1.tgz 
+cd python-3.6.1.tgz
+yum -y install gcc gcc-c++
+./configure --prefix=/usr/local/
+make #进行编译
+make altinstall #进行安装python3
+cd /usr/bin/ #进入bin目录
+mv python python.backup
+ln -s /usr/local/bin/python3.6 /usr/bin/python
+ln -s /usr/local/bin/python3.6 /usr/bin/python3
+cd /usr/bin
+# 如何里面有python2,则修改以下内容
+ls yum*
+#! /usr/bin/python2
+vim yum
+vim yum-config-manager
+vim yum-debug-restore
+vim yum-groups-manager
+vim yum-builddep
+vim yum-debug-dump
+vim yumdownloader
+vim /usr/libexec/urlgrabber-ext-down
+# 直接终端输入python 看下环境是否默认为python3
+
+安装数据库
+yum -y install mariadb-server
+systemctl start mariadb.service
+systemctl enable mariadb.service
+mysqladmin -uroot password '123456'
+#修改数据库的字符集
+vim /etc/my.cnf
+character-set-server=utf8
+systemctl restart mariadb.service
+
+安装nginx
+scp nginx-1.12.0.tar.gz root@IP:/root/
+yum -y install gcc gcc-c++ openssl-devel pcre-devel httpd-tools # 安装nginx依赖包
+tar -zxf nginx-1.12.0.tar.gz
+cd nginx-1.12.0
+useradd nginx
+./configure --prefix=/usr/local/nginx --user=nginx --group=nginx --with-http_ssl_module --with-http_mp4_module --with-http_flv_module
+make && make install #编译
+ln -s /usr/local/nginx/sbin/nginx /usr/sbin/
+nginx #启动
+netstat -anptu | grep nginx #查看端口
+
+
+部署
+scp requirements.txt movie.sql root@ip:/root/
+scp -r movie_project root@ip:/root/
+
+安装依赖包
+pip install -i http://pypi.douban.com/simple/ --trusted-host pypi.douban.com -r requirements.txt 
+
+进入mysql
+mysql -uroot -p 123456
+create database movie;
+use movie;
+source /root/movie.sql
+show tables;
+
+部署项目
+cp -r movie_project /usr/local/nginx/html/
+cp movie_project/nginx.conf /usr/local/nginx/conf/
+nginx -s stop
+nginx
+cd /usr/local/nginx/html/movie_project/
+nohup python manage.py runserver -h 127.0.0.1 -p 5001&
+nohup python manage.py runserver -h 127.0.0.1 -p 5002&
+nohup python manage.py runserver -h 127.0.0.1 -p 5003&
+nohup python manage.py runserver -h 127.0.0.1 -p 5004&
+netstat -anpth | grep 500*
+
+
+限制速度和个数
+vim usr/local/nginx/conf/nginx.conf
+limit_conn addr 1;
+limit_rate 1024k;
+nginx -s reload
+
+
+
